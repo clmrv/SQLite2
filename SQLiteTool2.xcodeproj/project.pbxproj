@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		CA50AE2223CA636C00126B2B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CA50AE2123CA636C00126B2B /* main.cpp */; };
+		CA50AE2B23CA63FD00126B2B /* sqlite2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CA50AE2923CA63FD00126B2B /* sqlite2.cpp */; };
+		CA50AE2E23CA646800126B2B /* table.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CA50AE2C23CA646800126B2B /* table.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +27,11 @@
 /* Begin PBXFileReference section */
 		CA50AE1E23CA636C00126B2B /* SQLiteTool2 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = SQLiteTool2; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA50AE2123CA636C00126B2B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		CA50AE2823CA63AE00126B2B /* shared.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = shared.hpp; sourceTree = "<group>"; };
+		CA50AE2923CA63FD00126B2B /* sqlite2.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sqlite2.cpp; sourceTree = "<group>"; };
+		CA50AE2A23CA63FD00126B2B /* sqlite2.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = sqlite2.hpp; sourceTree = "<group>"; };
+		CA50AE2C23CA646800126B2B /* table.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = table.cpp; sourceTree = "<group>"; };
+		CA50AE2D23CA646800126B2B /* table.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = table.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +64,11 @@
 		CA50AE2023CA636C00126B2B /* SQLiteTool2 */ = {
 			isa = PBXGroup;
 			children = (
+				CA50AE2C23CA646800126B2B /* table.cpp */,
+				CA50AE2D23CA646800126B2B /* table.hpp */,
+				CA50AE2823CA63AE00126B2B /* shared.hpp */,
+				CA50AE2923CA63FD00126B2B /* sqlite2.cpp */,
+				CA50AE2A23CA63FD00126B2B /* sqlite2.hpp */,
 				CA50AE2123CA636C00126B2B /* main.cpp */,
 			);
 			path = SQLiteTool2;
@@ -119,7 +131,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CA50AE2B23CA63FD00126B2B /* sqlite2.cpp in Sources */,
 				CA50AE2223CA636C00126B2B /* main.cpp in Sources */,
+				CA50AE2E23CA646800126B2B /* table.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
