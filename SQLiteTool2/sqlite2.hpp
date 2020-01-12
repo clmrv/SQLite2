@@ -29,8 +29,10 @@ class SQLite2 : public Tool {
 private:
     std::string fileName;
     std::vector<Table> tables;
+    std::vector<Relation*> relations;
     
     std::string editValue;
+    bool isSaved;
     
     int selectedScreen;
     int selectedTable;
@@ -51,9 +53,11 @@ public:
     void redraw();
     
     void openDatabase();
+    void saveDatabase();
     
     void drawTables();
     void drawFields();
+    void drawRelations();
     
     void remove();
     void add();

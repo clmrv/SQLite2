@@ -16,7 +16,14 @@ void SQLite2::setEntry(std::string field, std::string value) {
         editValue.assign(value);
 }
 std::string SQLite2::getEntry(std::string field) {
-    return "xd";
+    if (field == "IS_SAVED")
+    {
+        if (isSaved)
+            return "YES";
+        else
+            return "NO";
+    }
+    return "";
 }
 
 void SQLite2::bindBinds() {
@@ -26,29 +33,29 @@ void SQLite2::bindBinds() {
     backend->bind("#nice#.Fields.", [this](){this->drawFields();}, "Show fields of table.");
 
     // nano-like
-    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_NAMEX}",[this](){this->openDatabase();}, "Open SQLite database file."); // TUTAJ JEST DODANY DODATKOWY ZNAK
+    // TUTAJ JEST DODANY DODATKOWY ZNAK
+    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_NAMEX}",[this](){this->openDatabase();}, "Open SQLite database file.");
     backend->bind("#nano#<CTRL>T%Tables", [this](){this->drawTables();}, "Show tables.");
     backend->bind("#nano#<CTRL>F%Fields", [this](){this->drawFields();}, "Show data in table.");
+    backend->bind("#nano#<CTRL>R%Relations", [this](){this->drawRelations();}, "Show relationship between tables.");
     
     backend->bind("#nano#<CTRL>A%Add", [this](){this->add();}, "Add new item.");
-    backend->bind("#nano#<CTRL>R%Remove", [this](){this->remove();}, "Remove selected item.");
+    backend->bind("#nano#<CTRL>D%Delete", [this](){this->remove();}, "Remove selected item.");
     backend->bind("#nano#<CTRL>E%Edit!New value:${EDIT_VALUEX}", [this](){this->edit();}, "Edit selected item.");
     
     backend->bind("#nano#<DARROW>", [this](){this->downArrow();}, "Navigate.");
     backend->bind("#nano#<UARROW>", [this](){this->upArrow();}, "Navigate.");
     backend->bind("#nano#<LARROW>", [this](){this->leftArrow();}, "Navigate.");
     backend->bind("#nano#<RARROW>", [this](){this->rightArrow();}, "Navigate.");
-    
-    backend->bind("#nano#<CTRL>Y%test", [this](){this->redraw();}, "test.");
 }
 
 void SQLite2::init() {
+    isSaved = false;
     selectedScreen = 0;
     selectedRow = 0;
     selectedCol = 0;
-    selectedTable = 1;
+    selectedTable = 0;
     selectedRelation = 0;
-    //fileName = "sqlite.db";
 }
 
 void SQLite2::redraw() {
@@ -59,6 +66,10 @@ void SQLite2::redraw() {
             
         case S_FIELDS:
             drawFields();
+            break;
+            
+        case S_RELATIONS:
+            drawRelations();
             break;
             
         default:
@@ -73,7 +84,16 @@ void SQLite2::openDatabase() {
     sqlite3_close(database);
 }
 
+void SQLite2::saveDatabase() {
+    isSaved = true;
+    // TODO
+}
+
 void SQLite2::readData(sqlite3* database) {
+    // CLEAR
+    tables.clear();
+    relations.clear();
+    
     // TABLES (names, sql)
     Table *tableBuff;
     std::string query = "SELECT name,sql FROM sqlite_master WHERE type = 'table'";
@@ -91,6 +111,43 @@ void SQLite2::readData(sqlite3* database) {
     // FIELDS (column headers, types)
     for (int table_nr=0; table_nr<tables.size(); table_nr++)
         tables[table_nr].readData(database);
+    
+    // RELATIONS
+    std::string toFind1 = "foreign KEY(";
+    std::string buffName;
+    
+    std::string homeCol;
+    std::string foreignTable;
+    std::string foreignCol;
+    
+    int pointer_in;
+    int pointer_out;
+    for (int id=0; id < tables.size(); id++)
+    {
+        if ((pointer_in = tables[id].getSql().find(toFind1)) != std::string::npos)
+        {
+            pointer_in = pointer_in + 12;
+            pointer_out = tables[id].getSql().find(")");
+            homeCol.assign(tables[id].getSql().substr(pointer_in, pointer_out-pointer_in));
+            
+            buffName.assign(tables[id].getSql().substr(pointer_out));
+            pointer_in = 13;
+            pointer_out = buffName.find("(");
+            foreignTable.assign(buffName.substr(pointer_in, pointer_out - pointer_in));
+            
+            buffName.assign(buffName.substr(pointer_out));
+            pointer_in = 1;
+            pointer_out = buffName.find(")");
+            foreignCol.assign(buffName.substr(pointer_in, pointer_out-pointer_in));
+            
+            Table* foreignTablePtr;
+            for (int i=0; i< tables.size(); i++)
+                if (foreignTable == tables[i].getTableName())
+                    foreignTablePtr = &tables[i];
+            
+            relations.push_back(tables[id].addRelation(homeCol, foreignTablePtr, foreignCol));
+        }
+    }
 }
 
 void SQLite2::clearScr() {
@@ -144,7 +201,14 @@ void SQLite2::drawFields() {
         {
             if (y == selectedRow && x == selectedCol)
                 attron(A_STANDOUT);
-            mvprintw(4+y, x*field_width, "%s", tables[id].getData(y,x).c_str());
+            if (tables[id].getData(y,x).length() == 0)
+            {
+                move(4+y,x*field_width);
+                for (int i=0; i<field_width-1; i++)
+                    printw(" ");
+            }
+            else
+                mvprintw(4+y, x*field_width, "%s", tables[id].getData(y,x).c_str());
             if (y == selectedRow && x == selectedCol)
                 attroff(A_STANDOUT);
         }
@@ -152,19 +216,41 @@ void SQLite2::drawFields() {
     refresh();
 }
 
+void SQLite2::drawRelations() {
+    selectedScreen = S_RELATIONS;
+    clearScr();
+    drawTitle("RELATIONSHIPS");
+    for (int i=0; i < relations.size(); i++)
+    {
+        if (i == selectedRelation)
+            attron(A_STANDOUT);
+        mvprintw(2+i, 0, "%s( %s ) ~ ", relations[i]->homeTable->getTableName().c_str(), relations[i]->homeTable->getColName(relations[i]->homeCol).c_str());
+        printw("%s( %s )", relations[i]->foreignTable->getTableName().c_str(), relations[i]->foreignTable->getColName(relations[i]->foreignCol).c_str());
+        if (i == selectedRelation)
+            attroff(A_STANDOUT);
+    }
+    refresh();
+}
+
 void SQLite2::remove() {
     switch(selectedScreen) {
         case S_TABLES:
-            tables.erase(tables.begin()+selectedTable);
+            tables.erase(tables.begin() + selectedTable);
             break;
             
         case S_FIELDS:
             tables[selectedTable].removeRow(selectedRow);
             break;
             
+        case S_RELATIONS:
+            relations[selectedRelation]->homeTable->removeRelation();
+            relations.erase(relations.begin() + selectedRelation);
+            break;
+            
         default:
             return;
     }
+    isSaved = false;
     redraw();
 }
 
@@ -175,12 +261,15 @@ void SQLite2::add() {
             break;
             
         case S_FIELDS:
-            // ADD ROW
+            tables[selectedTable].addRow();
+            selectedRow = tables[selectedTable].getRowCount()-1;
+            selectedCol = 0;
             break;
             
         default:
             return;
     }
+    isSaved = false;
     redraw();
 }
 
@@ -197,13 +286,12 @@ void SQLite2::edit() {
         default:
             return;
     }
+    isSaved = false;
     redraw();
 }
 
 void SQLite2::rightArrow() {
     switch(selectedScreen) {
-        case S_TABLES:
-            return;
             
         case S_FIELDS:
             selectedCol++;
@@ -219,8 +307,6 @@ void SQLite2::rightArrow() {
 
 void SQLite2::leftArrow() {
     switch(selectedScreen) {
-        case S_TABLES:
-            return;
             
         case S_FIELDS:
             selectedCol--;
@@ -248,6 +334,11 @@ void SQLite2::upArrow() {
                 selectedRow = 0;
             break;
             
+        case S_RELATIONS:
+            selectedRelation--;
+            if (selectedRelation < 0)
+                selectedRelation = 0;
+            
         default:
             return;
     }
@@ -267,6 +358,11 @@ void SQLite2::downArrow() {
             if (selectedRow >= tables[selectedTable].getRowCount())
                 selectedRow = tables[selectedTable].getRowCount()-1;
             break;
+            
+        case S_RELATIONS:
+            selectedRelation++;
+            if (selectedRelation >= relations.size())
+                selectedRelation = (int)relations.size()-1;
             
         default:
             return;

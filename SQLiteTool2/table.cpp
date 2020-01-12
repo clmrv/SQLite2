@@ -9,6 +9,9 @@
 #include "sqlite2.hpp"
 using namespace std;
 
+Table::Table() {
+    relation = nullptr;
+}
 
 string Table::getSaveQuery() {
     string query = "CREATE TABLE ";
@@ -55,6 +58,10 @@ std::string Table::getData(int row, int col) {
     return data[row][col];
 }
 
+std::string Table::getSql() {
+    return sql;
+}
+
 void Table::readData(sqlite3* database) {
     // FIELDS (column headers, types)
     string query;
@@ -93,7 +100,36 @@ void Table::removeRow(int index) {
     data.erase(data.begin()+index);
 }
 
+void Table::addRow() {
+    string strBuff;
+    vector<string> rowBuff;
+    for (int i=0; i<getColCount(); i++)
+        rowBuff.push_back(strBuff);
+    data.push_back(rowBuff);
+}
+
 void Table::editField(int row, int col, std::string value) {
     data[row][col].assign(value);
+}
+
+Relation* Table::addRelation(std::string homeCol, Table* foreignTable, std::string foreignCol) {
+    relation = new Relation;
+    
+    relation->homeTable = this;
+    for (int i=0; i < getColCount(); i++)
+        if (homeCol == colNames[i])
+            relation->homeCol = i;
+    
+    relation->foreignTable = foreignTable;
+    for (int i=0; i < foreignTable->getColCount(); i++)
+        if (foreignCol == foreignTable->colNames[i])
+            relation->foreignCol = i;
+    
+    return relation;
+}
+
+void Table::removeRelation() {
+    delete relation;
+    relation = nullptr;
 }
 

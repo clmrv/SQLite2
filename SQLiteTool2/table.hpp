@@ -12,15 +12,20 @@
 #include <vector>
 #include <string>
 
+class Relation;
+
 class Table {
 private:
     std::string name;
     std::vector<std::string> colNames;
     std::vector<std::string> colTypes;
     std::vector< std::vector<std::string> > data;
+    Relation* relation;
+    
     std::string sql;
 
 public:
+    Table();
     void setSql(std::string code);
     void setTableName(std::string tableName);
     
@@ -30,13 +35,26 @@ public:
     std::string getData(int row, int col);
     int getColCount();
     int getRowCount();
+    std::string getSql();
     
     void readData(sqlite3* database);
     void removeRow(int index);
     void editField(int row, int col, std::string value);
+    void addRow();
+    Relation* addRelation(std::string homeCol, Table* foreignTable, std::string foreignCol);
+    void removeRelation();
     
     
     std::string getSaveQuery(); // old
+};
+
+class Relation {
+public:
+    Table* homeTable;
+    Table* foreignTable;
+    
+    int homeCol;
+    int foreignCol;
 };
 
 
