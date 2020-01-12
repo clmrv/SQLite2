@@ -7,13 +7,39 @@
 //
 
 #include "sqlite2.hpp"
-#include <iostream>
 
 void SQLite2::setEntry(std::string field, std::string value) {
+    if (field == "FILE_NAME")
+        fileName.assign(value);
     
+    if (field == "EDIT_VALUE")
+        editValue.assign(value);
 }
 std::string SQLite2::getEntry(std::string field) {
     return "xd";
+}
+
+void SQLite2::bindBinds() {
+    // nice-like
+    backend->bind("#nice#.Open.${Database file name:|FILE_NAME}", [this](){this->openDatabase();}, "Open SQLite database file.");
+    backend->bind("#nice#.Tables.", [this](){this->drawTables();}, "Show tables.");
+    backend->bind("#nice#.Fields.", [this](){this->drawFields();}, "Show fields of table.");
+
+    // nano-like
+    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_NAMEX}",[this](){this->openDatabase();}, "Open SQLite database file."); // TUTAJ JEST DODANY DODATKOWY ZNAK
+    backend->bind("#nano#<CTRL>T%Tables", [this](){this->drawTables();}, "Show tables.");
+    backend->bind("#nano#<CTRL>F%Fields", [this](){this->drawFields();}, "Show data in table.");
+    
+    backend->bind("#nano#<CTRL>A%Add", [this](){this->add();}, "Add new item.");
+    backend->bind("#nano#<CTRL>R%Remove", [this](){this->remove();}, "Remove selected item.");
+    backend->bind("#nano#<CTRL>E%Edit!New value:${EDIT_VALUEX}", [this](){this->edit();}, "Edit selected item.");
+    
+    backend->bind("#nano#<DARROW>", [this](){this->downArrow();}, "Navigate.");
+    backend->bind("#nano#<UARROW>", [this](){this->upArrow();}, "Navigate.");
+    backend->bind("#nano#<LARROW>", [this](){this->leftArrow();}, "Navigate.");
+    backend->bind("#nano#<RARROW>", [this](){this->rightArrow();}, "Navigate.");
+    
+    backend->bind("#nano#<CTRL>Y%test", [this](){this->redraw();}, "test.");
 }
 
 void SQLite2::init() {
@@ -22,6 +48,7 @@ void SQLite2::init() {
     selectedCol = 0;
     selectedTable = 1;
     selectedRelation = 0;
+    //fileName = "sqlite.db";
 }
 
 void SQLite2::redraw() {
@@ -40,7 +67,6 @@ void SQLite2::redraw() {
 }
 
 void SQLite2::openDatabase() {
-    fileName = "sqlite.db";
     sqlite3* database;
     sqlite3_open(fileName.c_str(), &database);
     readData(database);
@@ -137,7 +163,7 @@ void SQLite2::remove() {
             break;
             
         default:
-            break;
+            return;
     }
     redraw();
 }
@@ -153,7 +179,7 @@ void SQLite2::add() {
             break;
             
         default:
-            break;
+            return;
     }
     redraw();
 }
@@ -161,15 +187,89 @@ void SQLite2::add() {
 void SQLite2::edit() {
     switch(selectedScreen) {
         case S_TABLES:
-            tables[selectedTable].setTableName( "tmp" );
+            tables[selectedTable].setTableName( editValue );
             break;
             
         case S_FIELDS:
-            tables[selectedTable].editField(selectedRow, selectedCol, "tmp" );
+            tables[selectedTable].editField(selectedRow, selectedCol, editValue );
             break;
             
         default:
+            return;
+    }
+    redraw();
+}
+
+void SQLite2::rightArrow() {
+    switch(selectedScreen) {
+        case S_TABLES:
+            return;
+            
+        case S_FIELDS:
+            selectedCol++;
+            if (selectedCol >= tables[selectedTable].getColCount())
+                selectedCol = tables[selectedTable].getColCount()-1;
             break;
+            
+        default:
+            return;
+    }
+    redraw();
+}
+
+void SQLite2::leftArrow() {
+    switch(selectedScreen) {
+        case S_TABLES:
+            return;
+            
+        case S_FIELDS:
+            selectedCol--;
+            if (selectedCol < 0)
+                selectedCol = 0;
+            break;
+            
+        default:
+            return;
+    }
+    redraw();
+}
+
+void SQLite2::upArrow() {
+    switch(selectedScreen) {
+        case S_TABLES:
+            selectedTable--;
+            if (selectedTable < 0)
+                selectedTable = 0;
+            break;
+            
+        case S_FIELDS:
+            selectedRow--;
+            if (selectedRow < 0)
+                selectedRow = 0;
+            break;
+            
+        default:
+            return;
+    }
+    redraw();
+}
+
+void SQLite2::downArrow() {
+    switch(selectedScreen) {
+        case S_TABLES:
+            selectedTable++;
+            if (selectedTable >= tables.size())
+                selectedTable = (int)tables.size()-1;
+            break;
+            
+        case S_FIELDS:
+            selectedRow++;
+            if (selectedRow >= tables[selectedTable].getRowCount())
+                selectedRow = tables[selectedTable].getRowCount()-1;
+            break;
+            
+        default:
+            return;
     }
     redraw();
 }

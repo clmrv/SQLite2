@@ -30,6 +30,8 @@ private:
     std::string fileName;
     std::vector<Table> tables;
     
+    std::string editValue;
+    
     int selectedScreen;
     int selectedTable;
     int selectedRow;
@@ -43,6 +45,8 @@ private:
 public:
     void setEntry(std::string field, std::string value);
     std::string getEntry(std::string field);
+    void bindBinds();
+    
     void init();
     void redraw();
     
@@ -54,6 +58,11 @@ public:
     void remove();
     void add();
     void edit();
+    
+    void rightArrow();
+    void leftArrow();
+    void upArrow();
+    void downArrow();
 };
 
 

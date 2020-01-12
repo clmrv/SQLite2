@@ -7,9 +7,7 @@
 //
 
 #include "sqlite2.hpp"
-
 using namespace std;
-#include <iostream>
 
 
 string Table::getSaveQuery() {
