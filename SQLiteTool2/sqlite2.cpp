@@ -350,14 +350,20 @@ void SQLite2::remove() {
             if (selTableField == -1)
             {
                 for (int i=0; i < relations.size(); i++)
-                    if (relations[i]->foreignTable == &tables[selectedTable])
+                {
+                    if (relations[i]->foreignTable == &tables[selectedTable] || relations[i]->homeTable == &tables[selectedTable])
+                    {
                         relations.erase(relations.begin() + i);
+                        break;
+                    }
+                }
                 removedTables.push_back(tables[selectedTable].getTableName());
                 tables.erase(tables.begin() + selectedTable);
             }
             else
             {
                 tables[selectedTable].delCol(selTableField);
+                updateRelations(&tables[selectedTable], selTableField);
             }
             break;
             
@@ -565,4 +571,47 @@ std::string SQLite2::getDropQuery(std::string name) {
     query.append(name);
     query.append(";");
     return query;
+}
+
+void SQLite2::updateRelations(Table* table, int removedCol) {
+    for (int i=0; i < relations.size(); i++)
+    {
+        // home
+        if (relations[i]->homeTable == table)
+        {
+            if (removedCol == relations[i]->homeCol )
+            {
+                table->removeRelation();
+                relations.erase(relations.begin()+i);
+                return;
+            }
+            
+            if (removedCol < relations[i]->homeCol)
+            {
+                relations[i]->homeCol--;
+                return;
+            }
+            else
+                return;
+        }
+        
+        // foreign
+        if (relations[i]->foreignTable == table)
+        {
+            if (removedCol == relations[i]->foreignCol)
+            {
+                relations[i]->homeTable->removeRelation();
+                relations.erase(relations.begin()+i);
+                return;
+            }
+            
+            if (removedCol < relations[i]->foreignCol)
+            {
+                relations[i]->foreignCol--;
+                return;
+            }
+            else
+                return;
+        }
+    }
 }

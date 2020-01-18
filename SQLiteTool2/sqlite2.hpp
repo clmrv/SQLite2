@@ -60,6 +60,7 @@ private:
     void clearErr();
     
     std::string getDropQuery(std::string name);
+    void updateRelations(Table* table, int removedCol);
     
 public:
     void setEntry(std::string field, std::string value);
