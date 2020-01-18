@@ -44,8 +44,8 @@ public:
     Relation* addRelation(std::string homeCol, Table* foreignTable, std::string foreignCol);
     void removeRelation();
     
-    
-    std::string getSaveQuery(); // old
+    std::string getSaveQuery();
+    std::string getDataQuery();
 };
 
 class Relation {

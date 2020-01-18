@@ -9,12 +9,40 @@
 #include "sqlite2.hpp"
 
 void SQLite2::setEntry(std::string field, std::string value) {
-    if (field == "FILE_NAME")
-        fileName.assign(value);
+    if (field == "FILE_OPEN")
+    {
+        if (value.length() > 0)
+        {
+            file_status = F_CURR;
+            fileName.assign(value);
+        }
+    }
+    
+    if (field == "FILE_SAVE")
+    {
+        if (value.length() > 0 && file_status == F_CURR)
+        {
+            file_status = F_NEW;
+            fileName.assign(value);
+        }
+    }
     
     if (field == "EDIT_VALUE")
         editValue.assign(value);
+    
+    if (field == "KEY")
+    {
+        if (value == "<LARROW>")
+            leftArrow();
+        if (value == "<RARROW>")
+            rightArrow();
+        if (value == "<UARROW>")
+            upArrow();
+        if (value == "<DARROW>")
+            downArrow();
+    }
 }
+
 std::string SQLite2::getEntry(std::string field) {
     if (field == "IS_SAVED")
     {
@@ -28,13 +56,20 @@ std::string SQLite2::getEntry(std::string field) {
 
 void SQLite2::bindBinds() {
     // nice-like
-    backend->bind("#nice#.Open.${Database file name:|FILE_NAME}", [this](){this->openDatabase();}, "Open SQLite database file.");
-    backend->bind("#nice#.Tables.", [this](){this->drawTables();}, "Show tables.");
-    backend->bind("#nice#.Fields.", [this](){this->drawFields();}, "Show fields of table.");
+    backend->bind("#nice#.File.Open${Database file name:|FILE_OPEN}", [this](){this->openDatabase();}, "Open SQLite database file.");
+    backend->bind("#nice#.File.Save${Save as:|FILE_SAVE}", [this](){this->saveDatabase();}, "Save database.");
+    backend->bind("#nice#.Database.Tables", [this](){this->drawTables();}, "Show list of tables.");
+    backend->bind("#nice#.Database.Fields", [this](){this->drawFields();}, "Show fields of table.");
+    backend->bind("#nice#.Database.Relations", [this](){this->drawRelations();}, "Show list of relationships.");
+    
+    backend->bind("#nice#.Edit.Add", [this](){this->add();}, "Add new item.");
+    backend->bind("#nice#.Edit.Edit${New value:|EDIT_VALUE}", [this](){this->edit();}, "Edit selected item.");
+    backend->bind("#nice#.Edit.Delete", [this](){this->remove();}, "Delete selected item.");
 
     // nano-like
     // TUTAJ JEST DODANY DODATKOWY ZNAK
-    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_NAMEX}",[this](){this->openDatabase();}, "Open SQLite database file.");
+    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_OPENX}",[this](){this->openDatabase();}, "Open SQLite database file.");
+    backend->bind("#nano#<CTRL>S%Save!Save as:${FILE_SAVEX}",[this](){this->saveDatabase();}, "Save database.");
     backend->bind("#nano#<CTRL>T%Tables", [this](){this->drawTables();}, "Show tables.");
     backend->bind("#nano#<CTRL>F%Fields", [this](){this->drawFields();}, "Show data in table.");
     backend->bind("#nano#<CTRL>R%Relations", [this](){this->drawRelations();}, "Show relationship between tables.");
@@ -50,7 +85,9 @@ void SQLite2::bindBinds() {
 }
 
 void SQLite2::init() {
-    isSaved = false;
+    bindBinds();
+    file_status = F_NONE;
+    isSaved = true;
     selectedScreen = 0;
     selectedRow = 0;
     selectedCol = 0;
@@ -73,26 +110,71 @@ void SQLite2::redraw() {
             break;
             
         default:
+            clearScr();
             break;
     }
 }
 
 void SQLite2::openDatabase() {
     sqlite3* database;
-    sqlite3_open(fileName.c_str(), &database);
-    readData(database);
-    sqlite3_close(database);
+    if (sqlite3_open_v2(fileName.c_str(), &database, SQLITE_OPEN_READONLY, NULL) == SQLITE_OK)
+    {
+        readData(database);
+        sqlite3_close(database);
+        file_status = F_CURR;
+    }
+    else
+    {
+        
+        file_status = F_NONE;
+    }
 }
 
 void SQLite2::saveDatabase() {
-    isSaved = true;
-    // TODO
+    sqlite3* database;
+    switch(file_status)
+    {
+        case F_NONE:
+            //mvprintw(getmaxy(stdscr)-2, 0, "Error: Cannot save database.");
+            break;
+            
+        case F_CURR:
+            sqlite3_open_v2( fileName.c_str(), &database, SQLITE_OPEN_READWRITE, NULL);
+            for (int i=0; i < removedTables.size(); i++)
+                sqlite3_exec(database, getDropQuery(removedTables[i]).c_str(), NULL, NULL, NULL );
+            for (int i=0; i < tables.size(); i++)
+            {
+                sqlite3_exec(database, getDropQuery(tables[i].getTableName()).c_str(), NULL, NULL, NULL);
+                sqlite3_exec(database, tables[i].getSaveQuery().c_str(), NULL, NULL, NULL);
+                if (tables[i].getRowCount() > 0)
+                    sqlite3_exec(database, tables[i].getDataQuery().c_str(), NULL, NULL, NULL);
+            }
+            
+            sqlite3_close(database);
+            isSaved = true;
+            break;
+            
+        case F_NEW:
+            sqlite3_open_v2( fileName.c_str(), &database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+            
+            for (int i=0; i < tables.size(); i++)
+            {
+                sqlite3_exec(database, tables[i].getSaveQuery().c_str(), NULL, NULL, NULL);
+                if (tables[i].getRowCount() > 0)
+                    sqlite3_exec(database, tables[i].getDataQuery().c_str(), NULL, NULL, NULL);
+            }
+            
+            sqlite3_close(database);
+            isSaved = true;
+            break;
+    }
 }
 
 void SQLite2::readData(sqlite3* database) {
     // CLEAR
     tables.clear();
     relations.clear();
+    removedTables.clear();
     
     // TABLES (names, sql)
     Table *tableBuff;
@@ -155,6 +237,12 @@ void SQLite2::clearScr() {
         move( y, 0);
         clrtoeol();
     }
+    clearErr();
+}
+
+void SQLite2::clearErr() {
+    move(getmaxy(stdscr)-2,0);
+    clrtoeol();
 }
 
 void SQLite2::drawTitle(const char* titleName) {
@@ -235,6 +323,10 @@ void SQLite2::drawRelations() {
 void SQLite2::remove() {
     switch(selectedScreen) {
         case S_TABLES:
+            for (int i=0; i < relations.size(); i++)
+                if (relations[i]->foreignTable == &tables[selectedTable])
+                    relations.erase(relations.begin() + i);
+            removedTables.push_back(tables[selectedTable].getTableName());
             tables.erase(tables.begin() + selectedTable);
             break;
             
@@ -368,4 +460,11 @@ void SQLite2::downArrow() {
             return;
     }
     redraw();
+}
+
+std::string SQLite2::getDropQuery(std::string name) {
+    std::string query = "DROP TABLE ";
+    query.append(name);
+    query.append(";");
+    return query;
 }

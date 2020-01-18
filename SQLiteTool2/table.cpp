@@ -24,9 +24,47 @@ string Table::getSaveQuery() {
         query.append(colTypes[i]);
         if (i != colNames.size()-1)
             query.append(", ");
-        else
-            query.append(");");
     }
+    if (relation != nullptr)
+    {
+        query.append(", foreign KEY(");
+        query.append(getColName(relation->homeCol));
+        query.append(") REFERENCES ");
+        query.append(relation->foreignTable->getTableName());
+        query.append("(");
+        query.append(relation->foreignTable->getColName(relation->foreignCol));
+        query.append(")");
+    }
+    query.append(");");
+    return query;
+}
+
+string Table::getDataQuery() {
+    string query = "INSERT INTO ";
+    query.append(name);
+    query.append(" VALUES ");
+    for (int i=0; i < getRowCount(); i++)
+    {
+        query.append("(");
+        for (int j=0; j < getColCount(); j++)
+        {
+            if ( !isdigit(getData(i, j)[0]))
+                query.append("\"");
+            
+            query.append(getData(i, j));
+            
+            if ( !isdigit(getData(i, j)[0]))
+                query.append("\"");
+            
+            if (j != getColCount()-1)
+                query.append(",");
+        }
+        query.append(")");
+        
+        if (i != getRowCount()-1)
+            query.append(",");
+    }
+    query.append(";");
     return query;
 }
 
@@ -132,4 +170,5 @@ void Table::removeRelation() {
     delete relation;
     relation = nullptr;
 }
+
 

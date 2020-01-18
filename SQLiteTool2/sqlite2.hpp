@@ -24,12 +24,19 @@
 #define S_FIELDS 2
 #define S_RELATIONS 3
 
+#define F_NONE 0
+#define F_NEW 1
+#define F_CURR 2
+
 
 class SQLite2 : public Tool {
 private:
     std::string fileName;
+    int file_status;
     std::vector<Table> tables;
     std::vector<Relation*> relations;
+    
+    std::vector<std::string> removedTables;
     
     std::string editValue;
     bool isSaved;
@@ -40,14 +47,18 @@ private:
     int selectedCol;
     int selectedRelation;
     
+    void bindBinds();
     void readData(sqlite3* database);
     void drawTitle(const char* titleName);
+    
     void clearScr();
+    void clearErr();
+    
+    std::string getDropQuery(std::string name);
     
 public:
     void setEntry(std::string field, std::string value);
     std::string getEntry(std::string field);
-    void bindBinds();
     
     void init();
     void redraw();
