@@ -22,6 +22,8 @@ void SQLite2::setEntry(std::string field, std::string value) {
     {
         if (value.length() > 0 && file_status == F_CURR)
         {
+            if (value == fileName)
+                return;
             file_status = F_NEW;
             fileName.assign(value);
         }
@@ -88,10 +90,13 @@ void SQLite2::init() {
     bindBinds();
     file_status = F_NONE;
     isSaved = true;
+    
     selectedScreen = 0;
     selectedRow = 0;
     selectedCol = 0;
     selectedTable = 0;
+    selTableField = -1;
+    selectedType = false;
     selectedRelation = 0;
 }
 
@@ -258,11 +263,30 @@ void SQLite2::drawTables() {
     drawTitle("TABLES");
     for (int i=0; i<tables.size(); i++)
     {
-        if (i == selectedTable)
+        // table names
+        if (i == selectedTable && selTableField == -1)
             attron(A_STANDOUT);
-        mvprintw(2+i, 0, tables[i].getTableName().c_str());
-        if (i == selectedTable)
+        mvprintw(2+i*3, 0, tables[i].getTableName().c_str());
+        if (i == selectedTable && selTableField == -1)
             attroff(A_STANDOUT);
+        
+        // cols
+        for (int j=0; j < tables[i].getColCount(); j++)
+        {
+            // col name
+            if (i == selectedTable && selTableField == j && !selectedType)
+                attron(A_STANDOUT);
+            mvprintw(2+i*3, field_width*(j+1), "%s", tables[i].getColName(j).c_str());
+            if (i == selectedTable && selTableField == j && !selectedType)
+                attroff(A_STANDOUT);
+            
+            // col type
+            if (i == selectedTable && selTableField == j && selectedType)
+                attron(A_STANDOUT);
+            mvprintw(2+i*3+1, field_width*(j+1), "%s", tables[i].getColType(j).c_str());
+            if (i == selectedTable && selTableField == j && selectedType)
+                attroff(A_STANDOUT);
+        }
     }
     refresh();
 }
@@ -323,11 +347,18 @@ void SQLite2::drawRelations() {
 void SQLite2::remove() {
     switch(selectedScreen) {
         case S_TABLES:
-            for (int i=0; i < relations.size(); i++)
-                if (relations[i]->foreignTable == &tables[selectedTable])
-                    relations.erase(relations.begin() + i);
-            removedTables.push_back(tables[selectedTable].getTableName());
-            tables.erase(tables.begin() + selectedTable);
+            if (selTableField == -1)
+            {
+                for (int i=0; i < relations.size(); i++)
+                    if (relations[i]->foreignTable == &tables[selectedTable])
+                        relations.erase(relations.begin() + i);
+                removedTables.push_back(tables[selectedTable].getTableName());
+                tables.erase(tables.begin() + selectedTable);
+            }
+            else
+            {
+                tables[selectedTable].delCol(selTableField);
+            }
             break;
             
         case S_FIELDS:
@@ -349,7 +380,22 @@ void SQLite2::remove() {
 void SQLite2::add() {
     switch(selectedScreen) {
         case S_TABLES:
-            // ADD TABLE
+            if (selTableField == -1)
+            {
+                Table tab;
+                std::string nameBuff = "table";
+                nameBuff.append(std::to_string(tables.size()));
+                tab.setTableName(nameBuff);
+                tab.addCol();
+                tab.setColName(0, "id");
+                tab.setColType(0, "int");
+                tables.push_back(tab);
+            }
+            else
+            {
+                tables[selectedTable].addCol();
+                selTableField = tables[selectedTable].getColCount()-1;
+            }
             break;
             
         case S_FIELDS:
@@ -368,7 +414,18 @@ void SQLite2::add() {
 void SQLite2::edit() {
     switch(selectedScreen) {
         case S_TABLES:
-            tables[selectedTable].setTableName( editValue );
+            if (selTableField == -1)
+            {
+                removedTables.push_back(tables[selectedTable].getTableName());
+                tables[selectedTable].setTableName( editValue );
+            }
+            else
+            {
+                if (selectedType)
+                    tables[selectedTable].setColType(selTableField, editValue);
+                else
+                    tables[selectedTable].setColName(selTableField, editValue);
+            }
             break;
             
         case S_FIELDS:
@@ -385,6 +442,12 @@ void SQLite2::edit() {
 void SQLite2::rightArrow() {
     switch(selectedScreen) {
             
+        case S_TABLES:
+            selTableField++;
+            if (selTableField >= tables[selectedTable].getColCount())
+                selTableField = tables[selectedTable].getColCount()-1;
+            break;
+            
         case S_FIELDS:
             selectedCol++;
             if (selectedCol >= tables[selectedTable].getColCount())
@@ -399,6 +462,11 @@ void SQLite2::rightArrow() {
 
 void SQLite2::leftArrow() {
     switch(selectedScreen) {
+        case S_TABLES:
+            selTableField--;
+            if (selTableField < -1)
+                selTableField = -1;
+            break;
             
         case S_FIELDS:
             selectedCol--;
@@ -415,9 +483,24 @@ void SQLite2::leftArrow() {
 void SQLite2::upArrow() {
     switch(selectedScreen) {
         case S_TABLES:
-            selectedTable--;
-            if (selectedTable < 0)
-                selectedTable = 0;
+            if (selTableField == -1)
+            {
+                selectedTable--;
+                if (selectedTable < 0)
+                    selectedTable = 0;
+            }
+            else
+            {
+                if (selectedType)
+                    selectedType = false;
+                else
+                {
+                    selectedTable--;
+                    selectedType = true;
+                    if (selectedTable < 0)
+                        selectedTable = 0;
+                }
+            }
             break;
             
         case S_FIELDS:
@@ -440,9 +523,24 @@ void SQLite2::upArrow() {
 void SQLite2::downArrow() {
     switch(selectedScreen) {
         case S_TABLES:
-            selectedTable++;
-            if (selectedTable >= tables.size())
-                selectedTable = (int)tables.size()-1;
+            if (selTableField == -1)
+            {
+                selectedTable++;
+                if (selectedTable >= tables.size())
+                    selectedTable = (int)tables.size()-1;
+            }
+            else
+            {
+                if (selectedType)
+                {
+                    selectedTable++;
+                    if (selectedTable >= tables.size())
+                        selectedTable = (int)tables.size()-1;
+                    selectedType = false;
+                }
+                else
+                    selectedType = true;
+            }
             break;
             
         case S_FIELDS:

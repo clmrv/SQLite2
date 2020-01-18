@@ -42,9 +42,14 @@ private:
     bool isSaved;
     
     int selectedScreen;
+    
     int selectedTable;
+    int selTableField;
+    bool selectedType;
+    
     int selectedRow;
     int selectedCol;
+    
     int selectedRelation;
     
     void bindBinds();

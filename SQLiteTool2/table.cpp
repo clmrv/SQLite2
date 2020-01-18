@@ -72,6 +72,13 @@ void Table::setTableName(string tableName) {
     name.assign(tableName);
 }
 
+void Table::setColName(int col, std::string name) {
+    colNames[col].assign(name);
+}
+void Table::setColType(int col, std::string type) {
+    colTypes[col].assign(type);
+}
+
 string Table::getTableName() {
     return name;
 }
@@ -144,6 +151,22 @@ void Table::addRow() {
     for (int i=0; i<getColCount(); i++)
         rowBuff.push_back(strBuff);
     data.push_back(rowBuff);
+}
+
+void Table::addCol() {
+    string colname = "col";
+    colname.append(to_string(getColCount()));
+    colNames.push_back(colname);
+    colTypes.push_back("text");
+    for (int i=0; i < getRowCount(); i++)
+        data[i].push_back("");
+}
+
+void Table::delCol(int col) {
+    colNames.erase(colNames.begin()+col);
+    colTypes.erase(colTypes.begin()+col);
+    for (int i=0; i < data.size(); i++)
+        data[i].erase(data[i].begin()+col);
 }
 
 void Table::editField(int row, int col, std::string value) {

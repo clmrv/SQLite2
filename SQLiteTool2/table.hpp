@@ -28,6 +28,8 @@ public:
     Table();
     void setSql(std::string code);
     void setTableName(std::string tableName);
+    void setColName(int col, std::string name);
+    void setColType(int col, std::string type);
     
     std::string getTableName();
     std::string getColName(int index);
@@ -41,6 +43,8 @@ public:
     void removeRow(int index);
     void editField(int row, int col, std::string value);
     void addRow();
+    void addCol();
+    void delCol(int col);
     Relation* addRelation(std::string homeCol, Table* foreignTable, std::string foreignCol);
     void removeRelation();
     
