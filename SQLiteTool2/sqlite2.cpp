@@ -69,16 +69,15 @@ void SQLite2::bindBinds() {
     backend->bind("#nice#.Edit.Delete", [this](){this->remove();}, "Delete selected item.");
 
     // nano-like
-    // TUTAJ JEST DODANY DODATKOWY ZNAK
-    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_OPENX}",[this](){this->openDatabase();}, "Open SQLite database file.");
-    backend->bind("#nano#<CTRL>S%Save!Save as:${FILE_SAVEX}",[this](){this->saveDatabase();}, "Save database.");
+    backend->bind("#nano#<CTRL>O%Open!Database file name:${FILE_OPEN}",[this](){this->openDatabase();}, "Open SQLite database file.");
+    backend->bind("#nano#<CTRL>S%Save!Save as:${FILE_SAVE}",[this](){this->saveDatabase();}, "Save database.");
     backend->bind("#nano#<CTRL>T%Tables", [this](){this->drawTables();}, "Show tables.");
     backend->bind("#nano#<CTRL>F%Fields", [this](){this->drawFields();}, "Show data in table.");
     backend->bind("#nano#<CTRL>R%Relations", [this](){this->drawRelations();}, "Show relationship between tables.");
     
     backend->bind("#nano#<CTRL>A%Add", [this](){this->add();}, "Add new item.");
     backend->bind("#nano#<CTRL>D%Delete", [this](){this->remove();}, "Remove selected item.");
-    backend->bind("#nano#<CTRL>E%Edit!New value:${EDIT_VALUEX}", [this](){this->edit();}, "Edit selected item.");
+    backend->bind("#nano#<CTRL>E%Edit!New value:${EDIT_VALUE}", [this](){this->edit();}, "Edit selected item.");
     
     backend->bind("#nano#<DARROW>", [this](){this->downArrow();}, "Navigate.");
     backend->bind("#nano#<UARROW>", [this](){this->upArrow();}, "Navigate.");
@@ -409,6 +408,7 @@ void SQLite2::add() {
             selectedRow = tables[selectedTable].getRowCount()-1;
             selectedCol = 0;
             break;
+            
             
         default:
             return;
